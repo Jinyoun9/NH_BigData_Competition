@@ -132,8 +132,7 @@ print(f"Mean Accuracy: {np.mean(accuracy_scores)}")
 growth_stocks = final_data[(final_data['risk_growth_combined'] == 1)]
 growth_stocks_recommendations = growth_stocks[['etf_tck_cd', 'yr1_tot_pft_rt', 'risk_return_score']]\
     .drop_duplicates()\
-    .sort_values(by='risk_return_score', ascending=False)\
-    .head(5)
+    .sort_values(by='risk_return_score', ascending=False)
 
 print("\nTop 5 Growth Stocks Recommendations (Based on Risk-Return Score):")
 print(growth_stocks_recommendations)
@@ -142,8 +141,13 @@ print(growth_stocks_recommendations)
 value_stocks = final_data[(final_data['risk_growth_combined'] == 0)]
 value_stocks_recommendations = value_stocks[['etf_tck_cd', 'yr1_tot_pft_rt', 'risk_return_score']]\
     .drop_duplicates()\
-    .sort_values(by='risk_return_score', ascending=False)\
-    .head(5)
+    .sort_values(by='risk_return_score', ascending=False)
 
 print("\nTop 5 Value Stocks Recommendations (Based on Risk-Return Score):")
 print(value_stocks_recommendations)
+
+def call_portfolio_model(preference):
+    if preference == "위험형":
+        return growth_stocks_recommendations
+    elif preference == "안전형":
+        return value_stocks_recommendations
