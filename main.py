@@ -2,8 +2,9 @@ import json
 import boto3
 import streamlit as st
 import base64  
+from portfolio_model import call_portfolio_model
 from finance_index import *
-
+from news_headline import get_news_headlines
 # AWS Bedrock 클라이언트 설정
 bedrock_runtime = boto3.client(
     service_name="bedrock-runtime",
@@ -14,7 +15,7 @@ bedrock_runtime = boto3.client(
 def get_etf_predictions(tic1, tic2, tic3):
     etf_tickers, etf_infos = get_index_info(tic1, tic2, tic3)  # ETF 정보 가져오기
     indicator_history = get_economic_indicators()  # 경제 지표 정보 가져오기
-    
+    news_headline = get_news_headlines()
     prompt = "These are the ETFs and their current information:\n\n"
     
     for etf, info in zip(etf_tickers, etf_infos):
@@ -26,7 +27,13 @@ def get_etf_predictions(tic1, tic2, tic3):
     for name, hist in indicator_history:
         prompt += f"\n{name}:\n"
         prompt += hist.tail(100).to_string()  # 최근 100일간의 데이터를 텍스트로 추가
+        
+    prompt += "\nThese are news headlines today.:\n\n"
     
+    for news in news_headline:
+        news_info = f"{news['title']} (Source: {news['source']})\n"
+        prompt += news_info
+        
     prompt += """
     너가 만약 워렌 버핏과 같은 가치 투자자라면 고객에게 어떤 ETF를 추천해주겠어? 
     다음 조건을 충족하는 대답을 해줘.
@@ -35,6 +42,45 @@ def get_etf_predictions(tic1, tic2, tic3):
     3. 경제 지수와 ETF의 특성을 연관지어 근거로 설명할 것.
     4. 대답은 워렌 버핏과 비슷한 나이대의 말투로 할 것.
     5. 한국어로 할 것.
+    """
+
+    # AI에 요청하여 미래 성과 예측
+    response = get_response(prompt)
+    return response
+
+def get_portfolio_recommendation(risk_preference):
+    indicator_history = get_economic_indicators()  # 경제 지표 정보 가져오기
+    news_headline = get_news_headlines()  
+    portfolio_recommendation = call_portfolio_model(risk_preference)
+    # 포트폴리오 추천 데이터를 문자열로 변환하여 프롬프트에 추가
+    prompt = "These are the ETFs ranked by risk score and annual income:\n\n"
+    
+    # DataFrame을 문자열로 변환
+    for index, row in portfolio_recommendation.iterrows():
+        etf_info = f"ETF Ticker: {row['etf_tck_cd']}, 1-Year Total Profit Rate: {row['yr1_tot_pft_rt']}, Risk-Return Score: {row['risk_return_score']}\n"
+        prompt += etf_info
+    prompt += "\nThese are some relevant economic indicators:\n\n"
+    
+    # 경제 지표 정보를 텍스트로 추가
+    for name, hist in indicator_history:
+        prompt += f"\n{name}:\n"
+        prompt += hist.tail(100).to_string()  # 최근 100일간의 데이터를 텍스트로 추가
+    
+    prompt += "\nThese are news headlines today.:\n\n"
+    
+    for news in news_headline:
+        news_info = f"{news['title']} (Source: {news['source']})\n"
+        prompt += news_info
+        
+    prompt += """
+    너가 만약 수익을 극대화해야하는 펀드매니저라면 고객에게 어떤 ETF를 추천해주겠어? 
+    다음 조건을 충족하는 대답을 해줘.
+    1. 제시한 경제 지수 데이터의 흐름을 기반으로 할 것
+    2. 제시한 ETF 포트폴리오의 yr1_tot_pft_rt와 risk_return_score를 참고할 것.
+    3. 경제 지수와 ETF의 특성을 연관지어 근거로 설명할 것.
+    4. 뉴스 헤드라인을 보고 현 시장 상황을 염두에 둘 것.
+    5. 대답은 워렌 버핏과 비슷한 나이대의 말투로 할 것.
+    6. 한국어로 할 것.
     """
 
     # AI에 요청하여 미래 성과 예측
@@ -98,6 +144,12 @@ with st.form("etf_form"):
     ticker3 = st.text_input("Enter the third ETF ticker:")
     submit_button = st.form_submit_button("Submit")  # 폼 제출 버튼
 
+portfolio_button = st.button("포트폴리오")
+
+if portfolio_button:
+    st.write("성장주 추천 목록:")
+    
+    
 # 세션 상태에 메시지 없으면 초기화
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -110,6 +162,9 @@ if submit_button:
         # AI 응답을 세션 상태에 추가하고 표시
         st.session_state.messages.append({"role": "assistant", "content": etf_predictions})
       
+if portfolio_button:
+    response = get_portfolio_recommendation("위험형")
+    st.session_state.messages.append({"role": "assistant", "content": response})
 
 # 세션 상태에 저장된 메시지 순회하며 표시
 for message in st.session_state.messages:
