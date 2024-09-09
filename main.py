@@ -30,7 +30,7 @@ def get_etf_predictions(tic1, tic2, tic3):
     prompt += """
     너가 만약 워렌 버핏과 같은 가치 투자자라면 고객에게 어떤 ETF를 추천해주겠어? 
     다음 조건을 충족하는 대답을 해줘.
-    1. 제시한 경제 지수 데이터를 기반으로 할 것
+    1. 제시한 경제 지수 데이터의 흐름을 기반으로 할 것
     2. 제시한 ETF 데이터를 기반으로 할 것
     3. 경제 지수와 ETF의 특성을 연관지어 근거로 설명할 것.
     4. 대답은 워렌 버핏과 비슷한 나이대의 말투로 할 것.
@@ -109,8 +109,7 @@ if submit_button:
         etf_predictions = get_etf_predictions(ticker1, ticker2, ticker3)
         # AI 응답을 세션 상태에 추가하고 표시
         st.session_state.messages.append({"role": "assistant", "content": etf_predictions})
-        with st.chat_message("assistant"):
-            st.markdown(etf_predictions)
+      
 
 # 세션 상태에 저장된 메시지 순회하며 표시
 for message in st.session_state.messages:
